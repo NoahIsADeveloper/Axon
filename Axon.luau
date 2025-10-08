@@ -35,7 +35,7 @@ function Connection:IsConnected(): (boolean)
 	return self._connected
 end
 
-function Connection:Disconnect(): ()
+function Connection:Disconnect()
 	if not self._connected then error("cannot disconnect Connection that is not connected") end
 
 	self._connected = false
@@ -83,7 +83,7 @@ export type Axon = typeof(setmetatable({} :: {
 	Once: (self: Axon, callback: Callback) -> (Connection),
 	Wait: (self: Axon, timeout: number) -> (...any),
 
-	Disconnect: (self: Axon, callback: Callback, disconnectAll: boolean?) -> (),
+	Disconnect: (self: Axon, callback: Callback, allMatching: boolean?) -> (),
 	DisconnectAll: (self: Axon) -> (),
 
 	Listen: (self: Axon, signal: RBXScriptSignal) -> (RBXScriptConnection),
@@ -123,7 +123,7 @@ function Axon:GetConnections(): ({Connection})
 	return connections
 end
 
-function Axon:DisconnectAll(): ()
+function Axon:DisconnectAll()
 	local connection = self._head
 
 	while connection do
@@ -153,7 +153,7 @@ function Axon:Connect(callback: Callback): (Connection)
 	return connection
 end
 
-function Axon:Disconnect(callback: Callback, disconnectAll: boolean?): ()
+function Axon:Disconnect(callback: Callback, allMatching: boolean?)
 	if type(callback) ~= "function" then error(`argument 1 of :Disconnect(callback: Callback) expected function got {typeof(callback)}`) end
 	local connection = self._head
 
@@ -162,7 +162,7 @@ function Axon:Disconnect(callback: Callback, disconnectAll: boolean?): ()
 
 		if connection._callback == callback then
 			connection:Disconnect()
-			if not disconnectAll then break end
+			if not allMatching then break end
 		end
 
 		connection = next
@@ -197,7 +197,7 @@ function Axon:Once(callback: Callback): (Connection)
 	end)
 end
 
-function Axon:Fire(...: any): ()
+function Axon:Fire(...: any)
 	local connection = self._head
 	while connection do
 		local callback = connection._callback
@@ -247,6 +247,13 @@ return {
 		local connection = signal:Connect(function(...)
 			object:Fire(...)
 		end) :: RBXScriptConnection
+
+        -- Disconnect RBXScriptConnection on Axon:Destroy()
+        local oldDestroy = object.Destroy
+        function object:Destroy()
+            oldDestroy(self)
+            connection:Disconnect()
+        end
 
 		return object, connection
 	end
