@@ -37,7 +37,7 @@ NOTES
 - Disconnecting listeners in callbacks will still run the listener if said listener is the next one in the chain
 
 [[ SETTINGS ]]
-local CONNECTION_POOL_MAX_SIZE = 64
+local CONNECTION_POOL_MAX_SIZE = 8
 
 -- // Connection
 export type Callback = (self: Connection, ...any) -> ()
