@@ -52,6 +52,7 @@ export type Connection = typeof(setmetatable({} :: {
 	_connected: boolean,
 	_next: Connection?,
 	_last: Connection?,
+	_async: boolean,
 
 	IsConnected: (self: Connection) -> (boolean),
 	Disconnect: (self: Connection) -> (),
@@ -80,10 +81,11 @@ function Connection:Disconnect()
 	end
 end
 
-local function CreateConnection(callback: Callback): (Connection)
+local function CreateConnection(callback: Callback, async: boolean?): (Connection)
 	local object = (table.remove(ConnectionPool) or setmetatable({
 		_next = nil,
 		_last = nil,
+		_async = async or false,
 	}, Connection)) :: any
 
 	object._callback = callback
@@ -105,7 +107,7 @@ export type Axon = typeof(setmetatable({} :: {
 	GetConnections: (self: Axon) -> ({Connection}),
 	GetConnectionCount: (self: Axon) -> (number),
 
-	Connect: (self: Axon, callback: Callback) -> (Connection),
+	Connect: (self: Axon, callback: Callback, async: boolean?) -> (Connection),
 	Once: (self: Axon, callback: Callback) -> (Connection),
 	Wait: (self: Axon, timeout: number) -> (...any),
 
@@ -162,10 +164,10 @@ function Axon:DisconnectAll()
 	self._tail = nil
 end
 
-function Axon:Connect(callback: Callback): (Connection)
+function Axon:Connect(callback: Callback, async: boolean?): (Connection)
 	if type(callback) ~= "function" then error(`argument 1 of :Connect(callback: Callback) expected function got {typeof(callback)}`) end
 
-	local connection = CreateConnection(callback)
+	local connection = CreateConnection(callback, async)
 	local tail = self._tail
 
 	if tail then
@@ -225,12 +227,20 @@ end
 
 function Axon:Fire(...: any)
 	local connection = self._head
+
 	while connection do
 		local callback = connection._callback
 		local next = connection._next
 
 		if connection._connected and callback then
-			local success, errorMessage = pcall(task.spawn, callback, connection, ...)
+			local success, errorMessage
+
+			if connection._async then
+				success, errorMessage = pcall(task.spawn, callback, connection, ...)
+			else
+				success, errorMessage = pcall(callback, connection, ...)
+			end
+
 			if not success then
 				warn(`{debug.traceback(errorMessage)}`)
 			end
