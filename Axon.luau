@@ -34,7 +34,6 @@ Written by @NoahIsADeveloper
 NOTES
 - Listeners are called in the order they are connected in (FIFO)
 - Arguments are not cloned
-- Disconnecting listeners in callbacks will still run the listener if said listener is the next one in the chain
 
 [[ SETTINGS ]]
 local CONNECTION_POOL_MAX_SIZE = 8
@@ -73,21 +72,17 @@ function Connection:Disconnect()
 		last._next = self._next
 	end
 
-    self._last = nil
-	self._next = nil
-
 	if #ConnectionPool < CONNECTION_POOL_MAX_SIZE then
 		table.insert(ConnectionPool, self)
 	end
 end
 
 local function CreateConnection(callback: Callback, async: boolean?): (Connection)
-	local object = (table.remove(ConnectionPool) or setmetatable({
-		_next = nil,
-		_last = nil,
-		_async = async or false,
-	}, Connection)) :: any
+	local object = (table.remove(ConnectionPool) or setmetatable({}, Connection)) :: any
 
+	object._next = nil
+	object._last = nil
+	object._async = async or false
 	object._callback = callback
 	object._connected = true
 
@@ -186,14 +181,12 @@ function Axon:Disconnect(callback: Callback, allMatching: boolean?)
 	local connection = self._head
 
 	while connection do
-		local next = connection._next
-
 		if connection._callback == callback then
 			connection:Disconnect()
 			if not allMatching then break end
 		end
 
-		connection = next
+		connection = connection._next
 	end
 end
 
@@ -230,7 +223,6 @@ function Axon:Fire(...: any)
 
 	while connection do
 		local callback = connection._callback
-		local next = connection._next
 
 		if connection._connected and callback then
 			local success, errorMessage
@@ -246,7 +238,7 @@ function Axon:Fire(...: any)
 			end
 		end
 
-		connection = next
+		connection = connection._next
 	end
 end
 
