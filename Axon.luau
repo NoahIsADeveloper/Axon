@@ -34,7 +34,7 @@ Written by @NoahIsADeveloper
 NOTES
 - Listeners are called in the order they are connected in (FIFO)
 - Arguments are not cloned
-- Please use task.defer when disconnecting connections inside connections
+- Please use task.defer when disconnecting connections inside callbacks
 
 [[ SETTINGS ]]
 local CONNECTION_POOL_MAX_SIZE = 8
