@@ -37,7 +37,7 @@ NOTES
 - Please use task.defer when disconnecting connections inside callbacks
 
 [[ SETTINGS ]]
-local CONNECTION_POOL_MAX_SIZE = 8
+local CONNECTION_POOL_MAX_SIZE = 64
 
 -- // Connection
 export type Callback = (self: Connection, ...any) -> ()
